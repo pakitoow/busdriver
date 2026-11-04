@@ -1,56 +1,77 @@
-# Welcome to your Expo app 👋
+# BusDriver
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+L'application mobile des chauffeurs de bus (Expo SDK 57 · React Native · Expo Router · TypeScript).
 
-## Get started
+Maquettes et guide de style : [`docs/design/busdriver-maquettes.pdf`](docs/design/busdriver-maquettes.pdf)
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Démarrer
 
 ```bash
-npm run reset-project
+npm install
+npm start          # puis "a" (Android), "i" (iOS) ou scanner le QR code avec Expo Go
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Connexion en dev : **n'importe quel matricule + mot de passe** (l'API est simulée).
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Commande | Rôle |
+|---|---|
+| `npm start` | serveur de dev |
+| `npm run check` | typecheck + lint — **doit passer avant chaque PR** |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint + Prettier |
+| `npm run format` | reformate `src/` |
+| `npm run doctor` | diagnostique les dépendances Expo |
 
-## Learn more
+Ajouter une dépendance : **toujours** `npx expo install <paquet>` (jamais `npm install <paquet>`), pour avoir la version compatible SDK 57.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```
+src/
+  app/                    ← ROUTES UNIQUEMENT (chaque fichier = un écran)
+    _layout.tsx           polices, splash, garde d'authentification
+    login.tsx             p.1
+    location-permission.tsx p.2
+    vehicle-check.tsx     p.6   (sans barre d'onglets)
+    service-summary.tsx   p.9   (sans barre d'onglets)
+    incident-report.tsx   p.10  (modale)
+    (tabs)/
+      _layout.tsx         barre d'onglets personnalisée
+      index.tsx           p.4   Accueil
+      planning.tsx        p.5   Planning
+      trajet/index.tsx    p.7   Trajet (carte)
+      trajet/itineraire.tsx p.8 Itinéraire
+      messages.tsx        p.12  Messages
+      profil/index.tsx    p.3   Profil
+      profil/signalements.tsx p.11 Mes signalements
+  components/
+    ui/                   composants partagés du guide de style (Button, TextField, Card, Pill, LineBadge, Text, Screen, ScreenHeader, Icon)
+    navigation/           barre d'onglets
+  constants/theme.ts      couleurs, typo, espacements, mesures (p.13)
+  providers/              SessionProvider (chauffeur connecté)
+  services/api.ts         accès aux données (simulé pour l'instant)
+  types/models.ts         modèles métier (Driver, Service, Stop, Incident, Message…)
+  utils/format.ts         formatage FR (heures, durées, dates)
+```
 
-## Join the community
+Chaque écran contient un bloc jaune `TodoPlaceholder` qui liste ce qu'il reste à faire d'après la maquette. Supprimez-le quand vous implémentez l'écran.
 
-Join our community of developers creating universal apps.
+## Règles d'équipe
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. **Une branche par écran ou fonctionnalité** : `feat/planning`, `feat/incident-report`, `fix/tab-bar-badge`… Jamais de commit direct sur `main`.
+2. **PR vers `main`**, relue par au moins une autre personne. `npm run check` doit passer.
+3. **Pas de valeurs en dur** : couleurs, tailles et polices viennent de `@/constants/theme`. Utilisez `<Text variant="…">` de `@/components/ui` (le lint bloque `Text` de `react-native`).
+4. **Données uniquement via `@/services/api`** (le lint bloque l'import direct de `mock-data`). Quand le backend sera prêt, seul `api.ts` changera.
+5. **Composant réutilisé par 2 écrans ou plus → `src/components/`**, jamais dans `src/app/`.
+6. **Ne touchez pas aux fichiers partagés** (`theme.ts`, `components/ui/*`, `types/models.ts`, `_layout.tsx`) sans prévenir l'équipe : faites une petite PR séparée.
+7. Ne créez/modifiez jamais `ios/` ou `android/` à la main : tout passe par `app.json` et les config plugins.
+
+## À savoir
+
+- **Carte (écran Trajet)** : nécessite un module natif (`expo-maps` ou `react-native-maps`) → Expo Go ne suffira plus, il faudra un *development build* (`npx eas-cli@latest build --profile development`).
+- **Localisation** : installer `expo-location` (écrans 2, 7, 10).
+- **Session** : en mémoire pour l'instant, perdue au redémarrage. À persister avec `expo-secure-store` quand l'API d'authentification existe.
+- **Icônes** : [Feather](https://icons.expo.fyi) via `<Icon name="…" />`.
+- **Icône et splash de l'app** : encore celles d'Expo, à remplacer par le logo BusDriver.

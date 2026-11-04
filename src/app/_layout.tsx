@@ -1,18 +1,66 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import {
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { colors } from '@/constants/theme';
+import { SessionProvider, useSession } from '@/providers/session-provider';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <SessionProvider>
+      <StatusBar style="dark" />
+      <RootNavigator />
+    </SessionProvider>
+  );
+}
+
+/**
+ * Navigation map (see README "Écrans"):
+ *   logged out → login
+ *   logged in  → location-permission (once) → (tabs)
+ *   full-screen flows without tab bar: vehicle-check, service-summary, incident-report
+ */
+function RootNavigator() {
+  const { driver, locationPromptDone } = useSession();
+  const isLoggedIn = !!driver;
+
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.fond } }}>
+      <Stack.Protected guard={!isLoggedIn}>
+        <Stack.Screen name="login" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={isLoggedIn && !locationPromptDone}>
+        <Stack.Screen name="location-permission" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={isLoggedIn && locationPromptDone}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="vehicle-check" />
+        <Stack.Screen name="service-summary" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="incident-report" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+    </Stack>
   );
 }
